@@ -6,6 +6,7 @@ import { step, advanceClock } from './cpu.js';
 import { assemble } from './assembler.js';
 import { SAMPLE_PROGRAM, SAMPLE_DESCRIPTION } from './sample.js';
 import { createRunner } from './runner.js';
+import { toHex1, toHex2 } from './utils.js';
 import * as ui from './ui.js';
 
 // One clock tick = run the current T-state, show it, then move to the next one
@@ -22,7 +23,12 @@ export function tick() {
     ui.setMicroOp(result.description);
 
     if (result.halted) {
-        ui.log('>>> HLT Instruction Encountered. Execution Stopped. <<<', 'text-emerald-400 font-bold');
+        ui.log('>>> Execution Stopped (HLT or invalid opcode). Press Reset to start over. <<<', 'text-emerald-400 font-bold');
+        runner.stop();
+    }
+
+    if (result.wrapped) {
+        ui.log('WARNING: PC wrapped from FH back to 0H without reaching HLT. Paused. Add an HLT after your last instruction.', 'text-amber-400 font-bold');
         runner.stop();
     }
 
@@ -50,8 +56,12 @@ export function loadSample() {
 }
 
 export function editRam(addr, text) {
-    ram[addr] = assemble(text);
-    ui.updateRamRow(addr);
+    try {
+        ram[addr] = assemble(text);
+    } catch (err) {
+        ui.log(`RAM ${toHex1(addr)}: ${err.message} (kept ${toHex2(ram[addr])})`, 'text-rose-400');
+    }
+    ui.updateRamRow(addr);   // redraws the cell: new value, or the old one after an error
 }
 
 export function setSpeed(ms) {

@@ -84,14 +84,14 @@ Expected result: `25H + 05H - 23H = 07H` (binary `0000 0111`, decimal 7).
 
 Click any cell in the **Mnemonic/Data** column and type one of:
 
-- Mnemonic: `LDA 9H`, `ADD A`, `SUB 3`, `OUT`, `HLT`
-- Hex: `25H`
-- Binary (8 digits): `00100101`
-- Decimal: `37`
+- Instruction: `LDA 9H`, `ADD A`, `SUB 3` (the address is **one hex digit, 0-F**), `OUT`, `HLT`
+- Hex data: `25H` (always with the `H`)
+- Binary data (8 digits): `00100101`
+- Decimal data: `37` (0-255)
 
-Press **Enter** or click away to save. Remember that data and instructions share the same RAM, so place your data at addresses your program never executes (e.g. 9H-FH).
+Invalid input is rejected with a message in the log, and the cell keeps its old value.
 
----
+**Always end your program with `HLT`.** SAP-1 has no jump instruction, and an empty cell (`00H`) is really `LDA 0H`, not a no-op. Without `HLT` the PC runs past address FH, wraps to 0H, and the simulator pauses with a warning.
 
 ## Controls
 

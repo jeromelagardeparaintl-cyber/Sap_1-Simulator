@@ -97,7 +97,10 @@ function execute(t) {
     }
 
     const microProgram = EXECUTE[op];
-    if (!microProgram) return `T${t}: Unknown Opcode ${toBin4(op)}`;
+    if (!microProgram) {
+        clock.halted = true;   // real hardware would misbehave; the simulator stops instead
+        return `T${t}: Unknown Opcode ${toBin4(op)} - Computer Halted`;
+    }
 
     const microOp = microProgram[t];
     return microOp ? microOp() : `T${t} (${OPCODE_NAMES[op]}): NOP`;
@@ -105,14 +108,18 @@ function execute(t) {
 
 // ---------- Public API ----------
 
-// Runs the current T-state. Returns { alreadyHalted } or { description, halted }.
+// Runs the current T-state.
+// Returns { alreadyHalted } or { description, halted, wrapped }.
+// wrapped = true when the PC rolled over from FH to 0H (the program ran off the end of RAM).
 export function step() {
     if (clock.halted) return { alreadyHalted: true };
 
     resetSignals();
     const t = clock.tState;
+    const pcBefore = registers.PC;
     const description = t <= 3 ? FETCH[t]() : execute(t);
-    return { description, halted: clock.halted };
+    const wrapped = t === 2 && pcBefore === 0x0F;
+    return { description, halted: clock.halted, wrapped };
 }
 
 // Moves the ring counter T1 -> T2 -> ... -> T6 -> T1
