@@ -29,14 +29,13 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <button id="btn-sample" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                Sample (25H + 05H - 23H)
+            <button id="btn-step-instr" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5l7 7-7 7M13 5v14"/></svg>
+                Step Instruction
             </button>
-            <div class="h-5 w-px bg-slate-800 mx-1"></div>
             <button id="btn-step" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-                Step (T-State)
+                Step T-State
             </button>
             <button id="btn-run" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
                 <svg id="run-icon" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -56,8 +55,31 @@
 
     <main class="flex-1 overflow-hidden p-2 grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
 
-        <!-- ===== Left: RAM + Controller ===== -->
+        <!-- ===== Left: Load Program + RAM + Controller ===== -->
         <div class="lg:col-span-3 flex flex-col gap-3 h-full min-h-0">
+
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl shrink-0">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-2">
+                    <h2 class="text-xs font-bold text-slate-200 tracking-wide uppercase">Load Program</h2>
+                    <select id="val-base" class="bg-slate-950 border border-slate-700 text-slate-300 text-[10px] font-mono rounded px-1 py-0.5" title="Number base of the values you type">
+                        <option value="hex">Hex</option>
+                        <option value="dec">Decimal</option>
+                    </select>
+                </div>
+                <div class="text-[10px] text-slate-400 mb-1">Formula: A (+/-) B (+/-) C</div>
+                <div class="flex items-center gap-1 font-mono text-[11px]">
+                    <input id="val-0" type="text" placeholder="A" maxlength="3" class="w-11 bg-slate-950 border border-slate-700 focus:border-blue-500 rounded px-1 py-1 text-center text-slate-100 outline-none">
+                    <select id="op-1" class="bg-slate-950 border border-slate-700 text-amber-400 rounded px-1 py-1 font-bold"><option value="ADD">+</option><option value="SUB">&minus;</option></select>
+                    <input id="val-1" type="text" placeholder="B" maxlength="3" class="w-11 bg-slate-950 border border-slate-700 focus:border-blue-500 rounded px-1 py-1 text-center text-slate-100 outline-none">
+                    <select id="op-2" class="bg-slate-950 border border-slate-700 text-amber-400 rounded px-1 py-1 font-bold"><option value="ADD">+</option><option value="SUB" selected>&minus;</option></select>
+                    <input id="val-2" type="text" placeholder="C" maxlength="3" class="w-11 bg-slate-950 border border-slate-700 focus:border-blue-500 rounded px-1 py-1 text-center text-slate-100 outline-none">
+                </div>
+                <div class="flex gap-1.5 mt-2">
+                    <button id="btn-load" class="flex-1 px-2 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold rounded shadow transition">Load into RAM</button>
+                    <button id="btn-clear-ram" class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-[11px] font-semibold rounded shadow transition">Clear RAM</button>
+                </div>
+                <div id="load-msg" class="mt-2 text-[10px] font-mono leading-tight text-slate-400">Type your values (hex, e.g. 25 or 25H), then click Load. You can also edit RAM cells below directly.</div>
+            </section>
 
             <section class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl flex flex-col flex-1 min-h-0">
                 <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-2 shrink-0">

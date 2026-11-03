@@ -1,12 +1,12 @@
 // Offline cache: app shell first, CDN assets (Tailwind, fonts) cached on first load.
 // Bump CACHE whenever you change any file so users get the new version.
-const CACHE = 'sap1-v4';
+const CACHE = 'sap1-v5';
 const SHELL = [
     './', './index.html', './manifest.webmanifest', './icon.svg',
     './css/styles.css',
     './js/tailwind-config.js', './js/main.js', './js/simulator.js', './js/cpu.js',
     './js/state.js', './js/constants.js', './js/utils.js', './js/assembler.js',
-    './js/sample.js', './js/runner.js', './js/ui.js', './js/pwa.js',
+    './js/program-builder.js', './js/runner.js', './js/ui.js', './js/pwa.js',
 ];
 
 self.addEventListener('install', (e) => {

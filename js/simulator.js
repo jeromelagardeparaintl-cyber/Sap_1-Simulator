@@ -2,9 +2,10 @@
 // Every user action (step, run, reset, load sample, edit RAM) goes through here.
 
 import { ram, clock, resetMachine } from './state.js';
+import { T_STATE_COUNT } from './constants.js';
 import { step, advanceClock } from './cpu.js';
 import { assemble } from './assembler.js';
-import { SAMPLE_PROGRAM, SAMPLE_DESCRIPTION } from './sample.js';
+import { buildFormulaProgram } from './program-builder.js';
 import { createRunner } from './runner.js';
 import { toHex1, toHex2 } from './utils.js';
 import * as ui from './ui.js';
@@ -16,7 +17,7 @@ export function tick() {
     if (result.alreadyHalted) {
         ui.log('Execution Halted. Press Reset to start over.', 'text-amber-400');
         runner.stop();
-        return;
+        return result;
     }
 
     ui.log(result.description);
@@ -34,6 +35,15 @@ export function tick() {
 
     ui.render();
     advanceClock();
+    return result;
+}
+
+// Runs one whole instruction (every remaining T-state until the sequencer is back at T1)
+export function stepInstruction() {
+    for (let i = 0; i < T_STATE_COUNT; i++) {
+        const result = tick();
+        if (result.alreadyHalted || result.halted || clock.tState === 1) return;
+    }
 }
 
 const runner = createRunner(tick, ui.setRunButton);
@@ -47,12 +57,23 @@ export function reset() {
     ui.log('Simulator Reset to Initial T1 State.', 'text-rose-400');
 }
 
-export function loadSample() {
+// Builds a program from the user's typed values and puts it in RAM.
+// Throws (RAM untouched) if a value is invalid. Returns { expected, listing }.
+export function loadFormula(terms, base) {
+    const program = buildFormulaProgram(terms, base);
     reset();
     ram.fill(0);
-    Object.entries(SAMPLE_PROGRAM).forEach(([addr, byte]) => { ram[addr] = byte; });
+    Object.entries(program.memory).forEach(([addr, byte]) => { ram[addr] = byte; });
     ui.refreshRam();
-    ui.log(SAMPLE_DESCRIPTION, 'text-indigo-400');
+    ui.log(`Program loaded: ${program.listing}`, 'text-indigo-400');
+    return program;
+}
+
+export function clearRam() {
+    reset();
+    ram.fill(0);
+    ui.refreshRam();
+    ui.log('RAM cleared.', 'text-rose-400');
 }
 
 export function editRam(addr, text) {

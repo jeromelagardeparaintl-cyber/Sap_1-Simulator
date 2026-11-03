@@ -83,7 +83,11 @@ function buildRamTable(onEdit) {
             <td class="p-1 text-slate-400 text-[10px]" id="ram-bin-${i}">0000 0000</td>
             <td class="p-1 font-bold text-blue-400 text-center text-[10px]" id="ram-hex-${i}">00H</td>`;
         const input = tr.querySelector('input');
-        input.addEventListener('blur', () => onEdit(i, input.value));
+        input.dataset.shown = input.value;
+        // only re-parse when the user actually changed the text
+        input.addEventListener('blur', () => {
+            if (input.value !== input.dataset.shown) onEdit(i, input.value);
+        });
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
         body.appendChild(tr);
     }
@@ -197,7 +201,10 @@ export function updateRamRow(addr) {
     setText(`ram-hex-${addr}`, toHex2(byte));
 
     const input = $(`ram-input-${addr}`);
-    if (document.activeElement !== input) input.value = disassemble(byte);
+    if (document.activeElement !== input) {
+        input.value = disassemble(byte);
+        input.dataset.shown = input.value;
+    }
 }
 
 export function refreshRam() {
@@ -225,6 +232,14 @@ export function setRunButton(running) {
     $('btn-run').className = running ? CLS.btnPause : CLS.btnRun;
     setText('run-text', running ? 'Pause' : 'Run');
     $('run-icon').innerHTML = running ? ICON_PAUSE : ICON_PLAY;
+}
+
+const MSG_CLASS = { ok: 'text-emerald-400', error: 'text-rose-400', info: 'text-slate-400' };
+
+export function setLoadMessage(text, kind = 'info') {
+    const box = $('load-msg');
+    box.className = `mt-2 text-[10px] font-mono leading-tight ${MSG_CLASS[kind]}`;
+    box.innerText = text;
 }
 
 export function setSpeedLabel(ms) {
