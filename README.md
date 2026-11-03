@@ -1,4 +1,3 @@
-# Sap_1-Simulator
 # SAP-1 Computer Architecture Simulator
 
 An interactive, browser-based simulator of the **SAP-1 (Simple-As-Possible 1)** computer from Albert Paul Malvino's *Digital Computer Electronics*. Step through the fetch and execute cycles one T-state at a time and watch the W-bus, registers, control signals, and output LEDs change.
@@ -28,7 +27,7 @@ No installation, no build step, no dependencies to download. It is a single HTML
    cd <your-repo-folder>
    ```
 2. **Make sure `index.html` is in the root of the repo.**
-3. **Open it**: double-click `index.html`, or run a local server:
+3. **Run it with a local server** (required for ES modules):
    ```bash
    # Python 3
    python -m http.server 8000
@@ -111,9 +110,41 @@ Press **Enter** or click away to save. Remember that data and instructions share
 
 ```
 .
-├── index.html   # the entire simulator (HTML + CSS + JS)
-└── README.md    # this file
+├── index.html               # page layout only (no logic)
+├── manifest.webmanifest     # PWA metadata
+├── sw.js                    # service worker (offline cache)
+├── icon.svg                 # app icon
+├── css/
+│   └── styles.css           # custom CSS (glow animations, scrollbars)
+└── js/
+    ├── main.js              # entry point: wires buttons, starts the app
+    ├── simulator.js         # orchestrator: tick, reset, load sample, edit RAM
+    ├── cpu.js               # control unit: fetch/execute micro-operations
+    ├── state.js             # registers, RAM, signals, clock (single source of truth)
+    ├── constants.js         # opcodes, signal definitions, sizes
+    ├── assembler.js         # text <-> byte conversion (assemble / disassemble)
+    ├── runner.js            # auto-run timer (Run / Pause / speed)
+    ├── ui.js                # ALL DOM code: build + render
+    ├── sample.js            # demo program data
+    ├── utils.js             # pure formatting helpers (hex / binary)
+    ├── pwa.js               # service worker registration
+    └── tailwind-config.js   # Tailwind theme config
 ```
+
+### How the modules fit together
+
+```
+main.js ──> simulator.js ──> cpu.js ──> state.js
+   │             │  └──────> runner.js     ▲
+   │             └────────> ui.js ─────────┘ (reads state, draws it)
+   └──> ui.js, pwa.js
+```
+
+- **cpu.js never touches the DOM**, and **ui.js never changes state**.
+- To add an instruction: add its opcode in `constants.js` and its micro-program in the `EXECUTE` table in `cpu.js`.
+- To change how something looks: edit `ui.js`, `index.html`, or `css/styles.css`.
+
+> Because the code uses ES modules, the app must be served over HTTP (`python -m http.server 8000`) or GitHub Pages. Opening `index.html` by double-click will not work.
 
 ---
 
@@ -139,7 +170,7 @@ Press **Enter** or click away to save. Remember that data and instructions share
 
 ## Tech Stack
 
-- HTML5 / vanilla JavaScript
+- HTML5 / vanilla JavaScript (ES modules)
 - [Tailwind CSS](https://tailwindcss.com/) (CDN)
 - Google Fonts: Inter and JetBrains Mono
 
