@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP-1 Computer Architecture Simulator</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        sap: {
+                            dark: '#0f172a',
+                            panel: '#1e293b',
+                            border: '#334155',
+                            bus: '#3b82f6',
+                            active: '#22c55e',
+                            ledOn: '#ef4444',
+                            ledOff: '#450a0a'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Bus line animation effect */
+        @keyframes busGlow {
+            0% { box-shadow: 0 0 4px rgba(59, 130, 246, 0.4); border-color: #3b82f6; }
+            50% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.9); border-color: #60a5fa; }
+            100% { box-shadow: 0 0 4px rgba(59, 130, 246, 0.4); border-color: #3b82f6; }
+        }
+        .bus-active {
+            animation: busGlow 0.8s infinite;
+        }
+
+        /* Signal active glow */
+        .signal-on {
+            background-color: #15803d !important;
+            color: #4ade80 !important;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        /* LED Glow */
+        .led-red-on {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444, 0 0 15px #ef4444;
+        }
+        .led-green-on {
+            background-color: #22c55e;
+            box-shadow: 0 0 8px #22c55e, 0 0 15px #22c55e;
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<!-- h-screen and overflow-hidden prevent whole page scrolling -->
+<body class="bg-slate-950 text-slate-100 h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between shadow-lg shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm font-mono shadow-md shadow-blue-500/30">
+                SAP
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    SAP-1 Architecture Simulator
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/60 text-blue-400 border border-blue-700/50">Simple-As-Possible 1</span>
+                </h1>
+            </div>
+        </div>
+
+        <!-- Controls Toolbar -->
+        <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-sample" onclick="loadSampleProgram()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Sample (25H + 05H - 23H)
+            </button>
+            <div class="h-5 w-px bg-slate-800 mx-1"></div>
+            <button id="btn-step" onclick="step()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                Step (T-State)
+            </button>
+            <button id="btn-run" onclick="toggleRun()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
+                <svg id="run-icon" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span id="run-text">Run</span>
+            </button>
+            <button id="btn-reset" onclick="resetSimulator()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Reset
+            </button>
+            
+            <div class="flex items-center gap-1.5 ml-1 bg-slate-900 border border-slate-800 px-2 py-1 rounded">
+                <span class="text-[10px] text-slate-400 font-mono">Speed:</span>
+                <input type="range" id="speed-slider" min="50" max="1000" step="50" value="400" class="w-16 accent-blue-500 cursor-pointer" onchange="updateSpeed()">
+                <span id="speed-label" class="text-[10px] text-blue-400 font-mono w-10 text-right">400ms</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 overflow-hidden p-2 grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
+        
+        <!-- Left Panel: RAM & Control Unit (3 cols) -->
+        <div class="lg:col-span-3 flex flex-col gap-3 h-full min-h-0">
+            
+            <!-- RAM Panel (Flex-1 allows it to take up remaining height nicely) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl flex flex-col flex-1 min-h-0">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-2 shrink-0">
+                    <h2 class="text-xs font-bold text-slate-200 tracking-wide uppercase flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                        16 × 8 RAM Memory
+                    </h2>
+                    <span class="text-[10px] text-slate-400 font-mono">16 Bytes</span>
+                </div>
+                
+                <div class="overflow-y-auto flex-1 pr-1">
+                    <table class="w-full text-[11px] font-mono text-left border-collapse">
+                        <thead class="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800 z-10">
+                            <tr>
+                                <th class="p-1 w-8 text-center">Addr</th>
+                                <th class="p-1">Mnemonic/Data</th>
+                                <th class="p-1 w-20">Bin Code</th>
+                                <th class="p-1 w-10 text-center">Hex</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ram-table-body" class="divide-y divide-slate-800/50">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Microcode Controller & Active Signals -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl shrink-0">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-2">
+                    <h2 class="text-xs font-bold text-slate-200 tracking-wide uppercase flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Controller / Sequencer
+                    </h2>
+                    <div class="flex gap-1" id="t-state-indicators">
+                        <span id="t1-badge" class="px-1 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-500">T1</span>
+                        <span id="t2-badge" class="px-1 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-500">T2</span>
+                        <span id="t3-badge" class="px-1 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-500">T3</span>
+                        <span id="t4-badge" class="px-1 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-500">T4</span>
+                        <span id="t5-badge" class="px-1 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-500">T5</span>
+                        <span id="t6-badge" class="px-1 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-500">T6</span>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="text-[10px] text-slate-400 mb-1">Current Micro-operation:</div>
+                    <div id="micro-op-text" class="text-[11px] font-mono bg-slate-950 p-1.5 rounded border border-slate-800 text-emerald-400 min-h-[28px] flex items-center">
+                        Computer Idle. Press Step or Run.
+                    </div>
+                </div>
+
+                <!-- 12 Control Signal Word Bits -->
+                <div class="text-[10px] text-slate-400 mb-1">Control Signal Word (12-bit):</div>
+                <div class="grid grid-cols-6 gap-1 font-mono text-[10px] text-center">
+                    <div id="sig-Cp" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="Program Counter Increment">Cp</div>
+                    <div id="sig-Ep" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="Program Counter Enable to Bus">Ep</div>
+                    <div id="sig-Lm" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="MAR Load from Bus">Lm'</div>
+                    <div id="sig-CE" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="RAM Enable to Bus">CE'</div>
+                    <div id="sig-Li" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="Instruction Register Load">Li'</div>
+                    <div id="sig-Ei" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="Instruction Register Enable to Bus">Ei'</div>
+                    <div id="sig-La" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="Accumulator Load">La'</div>
+                    <div id="sig-Ea" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="Accumulator Enable to Bus">Ea</div>
+                    <div id="sig-Su" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="ALU Subtract Mode">Su</div>
+                    <div id="sig-Eu" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="ALU Enable to Bus">Eu</div>
+                    <div id="sig-Lb" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="B-Register Load">Lb'</div>
+                    <div id="sig-Lo" class="p-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-semibold" title="Output Register Load">Lo'</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel: SAP-1 Architecture Block Diagram & Registers (6 cols) -->
+        <div class="lg:col-span-6 flex flex-col gap-3 h-full min-h-0">
+            
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl relative flex-1 flex flex-col justify-center overflow-y-auto">
+                
+                <!-- Central W-Bus Graphic Column -->
+                <div class="absolute left-1/2 top-4 bottom-4 w-10 -translate-x-1/2 rounded border-2 border-slate-800 bg-slate-950/80 flex flex-col items-center justify-center gap-2 z-0" id="w-bus">
+                    <span class="text-[9px] font-mono font-bold text-slate-600 rotate-90 tracking-widest uppercase">W-BUS</span>
+                    <span id="bus-value-tag" class="text-[9px] font-mono font-bold text-blue-400 bg-slate-900 border border-blue-800 px-1 rounded shadow hidden">00H</span>
+                </div>
+
+                <!-- Block Diagram Register Layout -->
+                <div class="relative z-10 flex flex-col gap-2 h-full justify-between">
+                    
+                    <!-- Row 1: PC & MAR -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Program Counter (PC) -->
+                        <div id="panel-PC" class="bg-slate-950 border border-slate-800 rounded-lg p-2 relative shadow transition-all">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[11px] font-bold text-slate-300 font-mono">Program Counter</span>
+                                <span class="text-[9px] text-slate-500 font-mono">4-bit</span>
+                            </div>
+                            <div class="flex items-baseline justify-between font-mono">
+                                <span id="val-pc-bin" class="text-sm font-bold text-blue-400">0000</span>
+                                <span id="val-pc-hex" class="text-[10px] text-slate-400">0H</span>
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-800/80 flex gap-2 text-[9px] font-mono text-slate-500">
+                                <span>Cp: <span id="ind-Cp" class="text-slate-600 font-bold">0</span></span>
+                                <span>Ep: <span id="ind-Ep" class="text-slate-600 font-bold">0</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Memory Address Register (MAR) -->
+                        <div id="panel-MAR" class="bg-slate-950 border border-slate-800 rounded-lg p-2 relative shadow transition-all">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[11px] font-bold text-slate-300 font-mono">MAR</span>
+                                <span class="text-[9px] text-slate-500 font-mono">4-bit</span>
+                            </div>
+                            <div class="flex items-baseline justify-between font-mono">
+                                <span id="val-mar-bin" class="text-sm font-bold text-blue-400">0000</span>
+                                <span id="val-mar-hex" class="text-[10px] text-slate-400">0H</span>
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-800/80 flex gap-2 text-[9px] font-mono text-slate-500">
+                                <span>Lm: <span id="ind-Lm" class="text-slate-600 font-bold">1</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: IR -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2 bg-slate-950 border border-slate-800 rounded-lg p-2 relative shadow transition-all" id="panel-IR">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] font-bold text-slate-300 font-mono">Instruction Register (IR)</span>
+                                <span class="text-[9px] text-slate-500 font-mono">8-bit</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 font-mono">
+                                <div class="bg-slate-900 p-1 rounded border border-slate-800/60 flex justify-between items-center">
+                                    <span class="text-[9px] text-slate-400">Opcode:</span>
+                                    <span id="val-ir-op-bin" class="text-xs font-bold text-amber-400">0000</span>
+                                </div>
+                                <div class="bg-slate-900 p-1 rounded border border-slate-800/60 flex justify-between items-center">
+                                    <span class="text-[9px] text-slate-400">Operand:</span>
+                                    <span id="val-ir-arg-bin" class="text-xs font-bold text-indigo-400">0000</span>
+                                </div>
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-800/80 flex justify-between items-center text-[9px] font-mono text-slate-500">
+                                <div>
+                                    <span>Li: <span id="ind-Li" class="text-slate-600 font-bold">1</span></span>
+                                    <span class="ml-2">Ei: <span id="ind-Ei" class="text-slate-600 font-bold">1</span></span>
+                                </div>
+                                <span id="val-ir-decoded" class="text-emerald-400 font-bold">NOP / N/A</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Accumulator (A) & B Register -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div id="panel-ACC" class="bg-slate-950 border border-slate-800 rounded-lg p-2 relative shadow transition-all">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[11px] font-bold text-slate-300 font-mono">Accumulator (A)</span>
+                                <span class="text-[9px] text-slate-500 font-mono">8-bit</span>
+                            </div>
+                            <div class="flex items-baseline justify-between font-mono">
+                                <span id="val-acc-bin" class="text-sm font-bold text-blue-400">0000 0000</span>
+                                <span id="val-acc-hex" class="text-[10px] text-slate-400">00H (0)</span>
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-800/80 flex gap-2 text-[9px] font-mono text-slate-500">
+                                <span>La: <span id="ind-La" class="text-slate-600 font-bold">1</span></span>
+                                <span>Ea: <span id="ind-Ea" class="text-slate-600 font-bold">0</span></span>
+                            </div>
+                        </div>
+
+                        <div id="panel-B" class="bg-slate-950 border border-slate-800 rounded-lg p-2 relative shadow transition-all">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[11px] font-bold text-slate-300 font-mono">B Register</span>
+                                <span class="text-[9px] text-slate-500 font-mono">8-bit</span>
+                            </div>
+                            <div class="flex items-baseline justify-between font-mono">
+                                <span id="val-b-bin" class="text-sm font-bold text-blue-400">0000 0000</span>
+                                <span id="val-b-hex" class="text-[10px] text-slate-400">00H (0)</span>
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-800/80 flex gap-2 text-[9px] font-mono text-slate-500">
+                                <span>Lb: <span id="ind-Lb" class="text-slate-600 font-bold">1</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 4: ALU -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2 bg-slate-950 border border-slate-800 rounded-lg p-2 relative shadow transition-all" id="panel-ALU">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] font-bold text-slate-300 font-mono">Adder / Subtractor (ALU)</span>
+                                <span class="text-[9px] text-slate-500 font-mono">2's Comp</span>
+                            </div>
+                            <div class="flex items-center justify-between font-mono bg-slate-900 p-1.5 rounded border border-slate-800/60">
+                                <span class="text-[10px] text-slate-400" id="alu-operation-label">Sum [A + B]:</span>
+                                <span id="val-alu-bin" class="text-sm font-bold text-purple-400">0000 0000</span>
+                                <span id="val-alu-hex" class="text-[10px] text-slate-400">00H</span>
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-800/80 flex gap-4 text-[9px] font-mono text-slate-500">
+                                <span>Su: <span id="ind-Su" class="text-slate-600 font-bold">0</span></span>
+                                <span>Eu: <span id="ind-Eu" class="text-slate-600 font-bold">0</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 5: Output Register -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2 bg-slate-950 border border-slate-800 rounded-lg p-2 relative shadow transition-all" id="panel-OUT">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[11px] font-bold text-slate-300 font-mono">Output Register</span>
+                                <span class="text-[9px] text-slate-500 font-mono">8-bit</span>
+                            </div>
+                            <div class="flex items-baseline justify-between font-mono">
+                                <span id="val-out-bin" class="text-sm font-bold text-emerald-400">0000 0000</span>
+                                <span id="val-out-hex" class="text-[10px] text-slate-400">00H (Dec: 0)</span>
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-800/80 flex gap-2 text-[9px] font-mono text-slate-500">
+                                <span>Lo: <span id="ind-Lo" class="text-slate-600 font-bold">1</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Binary LED Output Display & Execution Log (3 cols) -->
+        <div class="lg:col-span-3 flex flex-col gap-3 h-full min-h-0">
+            
+            <!-- Real Binary LED Display Hardware Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl flex flex-col items-center justify-center shrink-0">
+                <h2 class="text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-2 text-center flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    Binary LED Display
+                </h2>
+
+                <!-- 8 LED Circles -->
+                <div class="grid grid-cols-8 gap-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800 shadow-inner mb-2 w-full justify-items-center">
+                    <div class="flex flex-col items-center gap-1"><div id="led-7" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B7</span></div>
+                    <div class="flex flex-col items-center gap-1"><div id="led-6" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B6</span></div>
+                    <div class="flex flex-col items-center gap-1"><div id="led-5" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B5</span></div>
+                    <div class="flex flex-col items-center gap-1"><div id="led-4" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B4</span></div>
+                    <div class="flex flex-col items-center gap-1"><div id="led-3" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B3</span></div>
+                    <div class="flex flex-col items-center gap-1"><div id="led-2" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B2</span></div>
+                    <div class="flex flex-col items-center gap-1"><div id="led-1" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B1</span></div>
+                    <div class="flex flex-col items-center gap-1"><div id="led-0" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-800 border border-slate-700 transition-all duration-300"></div><span class="text-[8px] font-mono text-slate-500">B0</span></div>
+                </div>
+
+                <!-- Numerical Digital Readout -->
+                <div class="w-full bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-between items-center font-mono">
+                    <span class="text-[10px] text-slate-400">Decimal Value:</span>
+                    <span id="led-display-dec" class="text-lg font-extrabold text-emerald-400">0</span>
+                </div>
+            </div>
+
+            <!-- Simulator Activity Log -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl flex-1 flex flex-col min-h-0">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-2 shrink-0">
+                    <h2 class="text-[11px] font-bold text-slate-300 tracking-wider uppercase flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Execution Log
+                    </h2>
+                    <button onclick="clearLog()" class="text-[9px] text-slate-500 hover:text-slate-300 border border-slate-700 rounded px-1.5 py-0.5">Clear</button>
+                </div>
+                <div id="log-container" class="flex-1 overflow-y-auto font-mono text-[10px] space-y-1 pr-1 text-slate-400">
+                    <div class="text-slate-600">-- SAP-1 Initialized --</div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- JavaScript Logic (Untouched) -->
+    <script>
+        // --- SAP-1 Architecture State ---
+        const registers = {
+            PC: 0x0,      
+            MAR: 0x0,     
+            IR: 0x00,     
+            ACC: 0x00,    
+            B: 0x00,      
+            OUT: 0x00,    
+            W_BUS: 0x00   
+        };
+
+        let RAM = new Uint8Array(16);
+        let tState = 1; 
+        let isHalted = false;
+        let isRunning = false;
+        let runTimer = null;
+        let clockSpeed = 400; 
+
+        const OPCODES = {
+            LDA: 0b0000,
+            ADD: 0b0001,
+            SUB: 0b0010,
+            OUT: 0b1110,
+            HLT: 0b1111
+        };
+
+        const OPCODE_NAMES = {
+            0b0000: 'LDA',
+            0b0001: 'ADD',
+            0b0010: 'SUB',
+            0b1110: 'OUT',
+            0b1111: 'HLT'
+        };
+
+        let signals = {
+            Cp: 0, Ep: 0, Lm: 1, CE: 1, Li: 1, Ei: 1,
+            La: 1, Ea: 0, Su: 0, Eu: 0, Lb: 1, Lo: 1
+        };
+
+        function toBin4(val) { return (val & 0x0F).toString(2).padStart(4, '0'); }
+        function toBin8(val) { return (val & 0xFF).toString(2).padStart(8, '0'); }
+        function toHex1(val) { return (val & 0x0F).toString(16).toUpperCase() + 'H'; }
+        function toHex2(val) { return (val & 0xFF).toString(16).toUpperCase().padStart(2, '0') + 'H'; }
+
+        function initRAMTable() {
+            const tbody = document.getElementById('ram-table-body');
+            tbody.innerHTML = '';
+            for (let i = 0; i < 16; i++) {
+                const tr = document.createElement('tr');
+                tr.id = `ram-row-${i}`;
+                tr.className = "hover:bg-slate-800/50 transition-colors";
+
+                tr.innerHTML = `
+                    <td class="p-1 font-bold text-slate-400 text-center">${toHex1(i)}</td>
+                    <td class="p-1">
+                        <input type="text" id="ram-input-${i}" value="NOP" 
+                            onblur="onRamInputBlur(${i})"
+                            onkeydown="if(event.key==='Enter') this.blur()"
+                            class="bg-transparent text-slate-200 border-b border-transparent focus:border-blue-500 focus:bg-slate-950 px-1 py-0.5 w-full outline-none text-[10px]">
+                    </td>
+                    <td class="p-1 text-slate-400 text-[10px]" id="ram-bin-${i}">0000 0000</td>
+                    <td class="p-1 font-bold text-blue-400 text-center text-[10px]" id="ram-hex-${i}">00H</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function parseInputToByte(str) {
+            str = str.trim().toUpperCase();
+            str = str.replace(/\(.*?\)/g, '').trim();
+            if (!str || str === 'NOP') return 0x00;
+
+            const parts = str.split(/\s+/);
+            const mnemonic = parts[0];
+            
+            if (OPCODES.hasOwnProperty(mnemonic)) {
+                const op = OPCODES[mnemonic];
+                let arg = 0;
+                if (parts[1]) {
+                    let argStr = parts[1].replace('H', '');
+                    arg = parseInt(argStr, 16) || parseInt(parts[1], 10) || 0;
+                }
+                return ((op & 0x0F) << 4) | (arg & 0x0F);
+            }
+
+            if (str.endsWith('H')) {
+                const hexVal = parseInt(str.replace('H', ''), 16);
+                if (!isNaN(hexVal)) return hexVal & 0xFF;
+            }
+
+            if (/^[01]{8}$/.test(str)) {
+                return parseInt(str, 2) & 0xFF;
+            }
+
+            const dec = parseInt(str, 10);
+            if (!isNaN(dec)) return dec & 0xFF;
+
+            return 0x00;
+        }
+
+        function onRamInputBlur(addr) {
+            const input = document.getElementById(`ram-input-${addr}`);
+            const byteVal = parseInputToByte(input.value);
+            RAM[addr] = byteVal;
+            updateRamRowDisplay(addr);
+        }
+
+        function updateRamRowDisplay(addr) {
+            const byteVal = RAM[addr];
+            const binStr = toBin8(byteVal);
+            const formattedBin = binStr.slice(0,4) + ' ' + binStr.slice(4);
+            
+            document.getElementById(`ram-bin-${addr}`).innerText = formattedBin;
+            document.getElementById(`ram-hex-${addr}`).innerText = toHex2(byteVal);
+
+            const op = (byteVal >> 4) & 0x0F;
+            const arg = byteVal & 0x0F;
+            const input = document.getElementById(`ram-input-${addr}`);
+            
+            if (document.activeElement !== input) {
+                if (OPCODE_NAMES[op]) {
+                    if (op === OPCODES.OUT || op === OPCODES.HLT) {
+                        input.value = OPCODE_NAMES[op];
+                    } else {
+                        input.value = `${OPCODE_NAMES[op]} ${toHex1(arg)}`;
+                    }
+                } else {
+                    input.value = `${toHex2(byteVal)} (data)`;
+                }
+            }
+        }
+
+        function loadSampleProgram() {
+            resetSimulator();
+            RAM.fill(0);
+
+            RAM[0x0] = 0x09; 
+            RAM[0x1] = 0x1A; 
+            RAM[0x2] = 0x2B; 
+            RAM[0x3] = 0xEF; 
+            RAM[0x4] = 0xFF; 
+
+            RAM[0x9] = 0x25; 
+            RAM[0xA] = 0x05; 
+            RAM[0xB] = 0x23; 
+
+            for (let i = 0; i < 16; i++) {
+                updateRamRowDisplay(i);
+            }
+            logActivity('Sample program loaded: LDA 9H, ADD AH, SUB BH, OUT, HLT', 'text-indigo-400');
+        }
+
+        function resetSimulator() {
+            if (isRunning) toggleRun();
+            
+            registers.PC = 0;
+            registers.MAR = 0;
+            registers.IR = 0;
+            registers.ACC = 0;
+            registers.B = 0;
+            registers.OUT = 0;
+            registers.W_BUS = 0;
+
+            tState = 1;
+            isHalted = false;
+
+            resetSignals();
+            updateGUI();
+            logActivity('Simulator Reset to Initial T1 State.', 'text-rose-400');
+        }
+
+        function resetSignals() {
+            signals = {
+                Cp: 0, Ep: 0, Lm: 1, CE: 1, Li: 1, Ei: 1,
+                La: 1, Ea: 0, Su: 0, Eu: 0, Lb: 1, Lo: 1
+            };
+        }
+
+        function logActivity(msg, colorClass = 'text-slate-300') {
+            const container = document.getElementById('log-container');
+            const div = document.createElement('div');
+            div.className = `${colorClass} leading-tight`;
+            div.innerText = `> ${msg}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log-container').innerHTML = '<div class="text-slate-600">-- Log Cleared --</div>';
+        }
+
+        function step() {
+            if (isHalted) {
+                logActivity('Execution Halted. Press Reset to start over.', 'text-amber-400');
+                if (isRunning) toggleRun();
+                return;
+            }
+
+            resetSignals();
+            let microOpDescription = "";
+
+            if (tState === 1) {
+                signals.Ep = 1; signals.Lm = 0;
+                registers.W_BUS = registers.PC & 0x0F;
+                registers.MAR = registers.W_BUS;
+                microOpDescription = `T1 (Fetch): PC (${toHex1(registers.PC)}) -> W-Bus -> MAR`;
+            } 
+            else if (tState === 2) {
+                signals.Cp = 1;
+                registers.PC = (registers.PC + 1) & 0x0F;
+                microOpDescription = `T2 (Fetch): Increment PC to ${toHex1(registers.PC)}`;
+            } 
+            else if (tState === 3) {
+                signals.CE = 0; signals.Li = 0;
+                registers.W_BUS = RAM[registers.MAR];
+                registers.IR = registers.W_BUS;
+
+                const op = (registers.IR >> 4) & 0x0F;
+                const arg = registers.IR & 0x0F;
+                const name = OPCODE_NAMES[op] || 'UNKNOWN';
+                microOpDescription = `T3 (Fetch): RAM[${toHex1(registers.MAR)}] (${toHex2(registers.W_BUS)}) -> W-Bus -> IR (${name} ${toHex1(arg)})`;
+            } 
+            else {
+                const op = (registers.IR >> 4) & 0x0F;
+                const arg = registers.IR & 0x0F;
+
+                switch (op) {
+                    case OPCODES.LDA: 
+                        if (tState === 4) {
+                            signals.Ei = 0; signals.Lm = 0;
+                            registers.W_BUS = arg; registers.MAR = registers.W_BUS;
+                            microOpDescription = `T4 (LDA): IR Operand (${toHex1(arg)}) -> W-Bus -> MAR`;
+                        } else if (tState === 5) {
+                            signals.CE = 0; signals.La = 0;
+                            registers.W_BUS = RAM[registers.MAR]; registers.ACC = registers.W_BUS;
+                            microOpDescription = `T5 (LDA): RAM[${toHex1(registers.MAR)}] (${toHex2(registers.W_BUS)}) -> W-Bus -> ACC`;
+                        } else {
+                            microOpDescription = `T6 (LDA): No Operation (NOP)`;
+                        }
+                        break;
+                    case OPCODES.ADD: 
+                        if (tState === 4) {
+                            signals.Ei = 0; signals.Lm = 0;
+                            registers.W_BUS = arg; registers.MAR = registers.W_BUS;
+                            microOpDescription = `T4 (ADD): IR Operand (${toHex1(arg)}) -> W-Bus -> MAR`;
+                        } else if (tState === 5) {
+                            signals.CE = 0; signals.Lb = 0;
+                            registers.W_BUS = RAM[registers.MAR]; registers.B = registers.W_BUS;
+                            microOpDescription = `T5 (ADD): RAM[${toHex1(registers.MAR)}] (${toHex2(registers.W_BUS)}) -> W-Bus -> B Register`;
+                        } else if (tState === 6) {
+                            signals.Eu = 1; signals.La = 0; signals.Su = 0;
+                            const aluVal = (registers.ACC + registers.B) & 0xFF;
+                            registers.W_BUS = aluVal; registers.ACC = aluVal;
+                            microOpDescription = `T6 (ADD): ALU Sum (${toHex2(aluVal)}) -> W-Bus -> ACC`;
+                        }
+                        break;
+                    case OPCODES.SUB:
+                        if (tState === 4) {
+                            signals.Ei = 0; signals.Lm = 0;
+                            registers.W_BUS = arg; registers.MAR = registers.W_BUS;
+                            microOpDescription = `T4 (SUB): IR Operand (${toHex1(arg)}) -> W-Bus -> MAR`;
+                        } else if (tState === 5) {
+                            signals.CE = 0; signals.Lb = 0;
+                            registers.W_BUS = RAM[registers.MAR]; registers.B = registers.W_BUS;
+                            microOpDescription = `T5 (SUB): RAM[${toHex1(registers.MAR)}] (${toHex2(registers.W_BUS)}) -> W-Bus -> B Register`;
+                        } else if (tState === 6) {
+                            signals.Eu = 1; signals.La = 0; signals.Su = 1;
+                            const aluVal = (registers.ACC - registers.B) & 0xFF;
+                            registers.W_BUS = aluVal; registers.ACC = aluVal;
+                            microOpDescription = `T6 (SUB): ALU Sub (${toHex2(aluVal)}) -> W-Bus -> ACC`;
+                        }
+                        break;
+                    case OPCODES.OUT: 
+                        if (tState === 4) {
+                            signals.Ea = 1; signals.Lo = 0;
+                            registers.W_BUS = registers.ACC; registers.OUT = registers.W_BUS;
+                            microOpDescription = `T4 (OUT): ACC (${toHex2(registers.ACC)}) -> W-Bus -> Output Register`;
+                        } else {
+                            microOpDescription = `T${tState} (OUT): NOP`;
+                        }
+                        break;
+                    case OPCODES.HLT: 
+                        isHalted = true;
+                        microOpDescription = `T${tState} (HLT): Computer Halted execution.`;
+                        logActivity('>>> HLT Instruction Encountered. Execution Stopped. <<<', 'text-emerald-400 font-bold');
+                        if (isRunning) toggleRun();
+                        break;
+                    default:
+                        microOpDescription = `T${tState}: Unknown Opcode ${toBin4(op)}`;
+                        break;
+                }
+            }
+
+            logActivity(microOpDescription);
+            document.getElementById('micro-op-text').innerText = microOpDescription;
+            updateGUI();
+
+            if (!isHalted) {
+                tState = (tState % 6) + 1;
+            }
+        }
+
+        function toggleRun() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('btn-run');
+            const runText = document.getElementById('run-text');
+            const runIcon = document.getElementById('run-icon');
+
+            if (isRunning) {
+                btn.className = "px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5";
+                runText.innerText = "Pause";
+                runIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+                runTimer = setInterval(() => { step(); }, clockSpeed);
+            } else {
+                btn.className = "px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold rounded shadow transition flex items-center gap-1.5";
+                runText.innerText = "Run";
+                runIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+                clearInterval(runTimer);
+            }
+        }
+
+        function updateSpeed() {
+            const val = document.getElementById('speed-slider').value;
+            clockSpeed = parseInt(val, 10);
+            document.getElementById('speed-label').innerText = `${clockSpeed}ms`;
+            if (isRunning) {
+                clearInterval(runTimer);
+                runTimer = setInterval(() => { step(); }, clockSpeed);
+            }
+        }
+
+        function updateGUI() {
+            for (let i = 1; i <= 6; i++) {
+                const badge = document.getElementById(`t${i}-badge`);
+                if (i === tState) {
+                    badge.className = "px-1 py-0.5 rounded text-[9px] font-mono font-bold bg-blue-600 text-white shadow";
+                } else {
+                    badge.className = "px-1 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-500";
+                }
+            }
+
+            const sigKeys = ['Cp','Ep','Lm','CE','Li','Ei','La','Ea','Su','Eu','Lb','Lo'];
+            sigKeys.forEach(sig => {
+                const el = document.getElementById(`sig-${sig}`);
+                const ind = document.getElementById(`ind-${sig}`);
+                const isActive = (sig === 'Cp' || sig === 'Ep' || sig === 'Ea' || sig === 'Su' || sig === 'Eu')
+                    ? signals[sig] === 1
+                    : signals[sig] === 0;
+
+                if (el) {
+                    if (isActive) el.classList.add('signal-on');
+                    else el.classList.remove('signal-on');
+                }
+                if (ind) {
+                    ind.innerText = signals[sig];
+                    ind.className = isActive ? "text-emerald-400 font-bold" : "text-slate-600 font-bold";
+                }
+            });
+
+            const wBus = document.getElementById('w-bus');
+            const busTag = document.getElementById('bus-value-tag');
+            const isBusActive = (signals.Ep === 1 || signals.CE === 0 || signals.Ei === 0 || signals.Ea === 1 || signals.Eu === 1);
+            
+            if (isBusActive) {
+                wBus.classList.add('bus-active');
+                busTag.innerText = toHex2(registers.W_BUS);
+                busTag.classList.remove('hidden');
+            } else {
+                wBus.classList.remove('bus-active');
+                busTag.classList.add('hidden');
+            }
+
+            document.getElementById('val-pc-bin').innerText = toBin4(registers.PC);
+            document.getElementById('val-pc-hex').innerText = toHex1(registers.PC);
+
+            document.getElementById('val-mar-bin').innerText = toBin4(registers.MAR);
+            document.getElementById('val-mar-hex').innerText = toHex1(registers.MAR);
+
+            const op = (registers.IR >> 4) & 0x0F;
+            const arg = registers.IR & 0x0F;
+            document.getElementById('val-ir-op-bin').innerText = toBin4(op);
+            document.getElementById('val-ir-arg-bin').innerText = toBin4(arg);
+            document.getElementById('val-ir-decoded').innerText = OPCODE_NAMES[op] ? `${OPCODE_NAMES[op]} ${toHex1(arg)}` : 'INVALID';
+
+            document.getElementById('val-acc-bin').innerText = toBin8(registers.ACC).slice(0,4) + ' ' + toBin8(registers.ACC).slice(4);
+            document.getElementById('val-acc-hex').innerText = `${toHex2(registers.ACC)} (${registers.ACC})`;
+
+            document.getElementById('val-b-bin').innerText = toBin8(registers.B).slice(0,4) + ' ' + toBin8(registers.B).slice(4);
+            document.getElementById('val-b-hex').innerText = `${toHex2(registers.B)} (${registers.B})`;
+
+            const aluVal = signals.Su === 1 ? (registers.ACC - registers.B) & 0xFF : (registers.ACC + registers.B) & 0xFF;
+            document.getElementById('val-alu-bin').innerText = toBin8(aluVal).slice(0,4) + ' ' + toBin8(aluVal).slice(4);
+            document.getElementById('val-alu-hex').innerText = toHex2(aluVal);
+            document.getElementById('alu-operation-label').innerText = signals.Su === 1 ? 'Diff [A - B]:' : 'Sum [A + B]:';
+
+            document.getElementById('val-out-bin').innerText = toBin8(registers.OUT).slice(0,4) + ' ' + toBin8(registers.OUT).slice(4);
+            document.getElementById('val-out-hex').innerText = `${toHex2(registers.OUT)} (Dec: ${registers.OUT})`;
+
+            for (let i = 0; i < 16; i++) {
+                const row = document.getElementById(`ram-row-${i}`);
+                if (i === registers.MAR && (signals.CE === 0 || signals.Lm === 0)) {
+                    row.className = "bg-blue-950/80 border-l-4 border-blue-500 font-bold transition-colors";
+                } else {
+                    row.className = "hover:bg-slate-800/50 transition-colors";
+                }
+            }
+
+            updateLEDs(registers.OUT);
+        }
+
+        function updateLEDs(val) {
+            for (let i = 0; i < 8; i++) {
+                const bit = (val >> i) & 1;
+                const led = document.getElementById(`led-${i}`);
+                if (bit === 1) {
+                    led.className = "w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-red-400 led-red-on transition-all duration-300";
+                } else {
+                    led.className = "w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-900 border border-slate-800 transition-all duration-300";
+                }
+            }
+            document.getElementById('led-display-dec').innerText = val;
+        }
+
+        window.onload = function() {
+            initRAMTable();
+            loadSampleProgram();
+        };
+    </script>
+        <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+        });
+    }
+    </script>
+</body>
+</html>

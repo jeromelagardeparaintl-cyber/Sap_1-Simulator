@@ -1,0 +1,13 @@
+{
+  "name": "SAP-1 Architecture Simulator",
+  "short_name": "SAP-1 Sim",
+  "description": "Interactive Simple-As-Possible 1 computer simulator",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
