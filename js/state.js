@@ -8,6 +8,10 @@ export const ram = new Uint8Array(RAM_SIZE);
 export const signals = { ...DEFAULT_SIGNALS };
 export const clock = { tState: 1, halted: false };
 
+// Addresses the user filled with data values. RAM itself cannot tell data from
+// instructions (both are just bytes), so we remember it only to label the table.
+export const dataCells = new Set();
+
 export function resetSignals() {
     Object.assign(signals, DEFAULT_SIGNALS);
 }

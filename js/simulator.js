@@ -1,10 +1,10 @@
 // The orchestrator: connects the CPU, the runner and the UI.
 // Every user action (step, run, reset, load sample, edit RAM) goes through here.
 
-import { ram, clock, resetMachine } from './state.js';
+import { ram, clock, dataCells, resetMachine } from './state.js';
 import { T_STATE_COUNT } from './constants.js';
 import { step, advanceClock } from './cpu.js';
-import { assemble } from './assembler.js';
+import { assemble, isDataText } from './assembler.js';
 import { buildFormulaProgram } from './program-builder.js';
 import { createRunner } from './runner.js';
 import { toHex1, toHex2 } from './utils.js';
@@ -63,6 +63,8 @@ export function loadFormula(terms, base) {
     const program = buildFormulaProgram(terms, base);
     reset();
     ram.fill(0);
+    dataCells.clear();
+    program.dataAddresses.forEach((addr) => dataCells.add(addr));
     Object.entries(program.memory).forEach(([addr, byte]) => { ram[addr] = byte; });
     ui.refreshRam();
     ui.log(`Program loaded: ${program.listing}`, 'text-indigo-400');
@@ -72,6 +74,7 @@ export function loadFormula(terms, base) {
 export function clearRam() {
     reset();
     ram.fill(0);
+    dataCells.clear();
     ui.refreshRam();
     ui.log('RAM cleared.', 'text-rose-400');
 }
@@ -79,6 +82,7 @@ export function clearRam() {
 export function editRam(addr, text) {
     try {
         ram[addr] = assemble(text);
+        if (isDataText(text)) dataCells.add(addr); else dataCells.delete(addr);
     } catch (err) {
         ui.log(`RAM ${toHex1(addr)}: ${err.message} (kept ${toHex2(ram[addr])})`, 'text-rose-400');
     }

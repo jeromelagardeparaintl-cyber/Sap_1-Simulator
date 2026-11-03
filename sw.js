@@ -1,6 +1,6 @@
 // Offline cache: app shell first, CDN assets (Tailwind, fonts) cached on first load.
 // Bump CACHE whenever you change any file so users get the new version.
-const CACHE = 'sap1-v5';
+const CACHE = 'sap1-v6';
 const SHELL = [
     './', './index.html', './manifest.webmanifest', './icon.svg',
     './css/styles.css',

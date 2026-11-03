@@ -2,7 +2,7 @@
 // it never changes the state itself.
 
 import { SIGNAL_DEFS, OPCODE_NAMES, RAM_SIZE, T_STATE_COUNT } from './constants.js';
-import { registers, ram, signals, clock } from './state.js';
+import { registers, ram, signals, clock, dataCells } from './state.js';
 import { disassemble } from './assembler.js';
 import { toBin4, toBin8Spaced, toHex1, toHex2 } from './utils.js';
 
@@ -202,7 +202,7 @@ export function updateRamRow(addr) {
 
     const input = $(`ram-input-${addr}`);
     if (document.activeElement !== input) {
-        input.value = disassemble(byte);
+        input.value = dataCells.has(addr) ? `${toHex2(byte)} (data)` : disassemble(byte);
         input.dataset.shown = input.value;
     }
 }

@@ -60,6 +60,13 @@ export function assemble(text) {
     return encode(mnemonic, parseInt(operand, 16));
 }
 
+// true when the typed text is a plain data value (25H, 00100101, 37), false for instructions/empty
+export function isDataText(text) {
+    const str = text.replace(/\(.*?\)/g, '').trim().toUpperCase();
+    if (!str || str === 'NOP') return false;
+    return !Object.hasOwn(OPCODES, str.split(/\s+/)[0]);
+}
+
 // byte -> "ADD AH" | "OUT" | "3FH (data)" | "00H (empty)"
 export function disassemble(byte) {
     if (byte === 0) return '00H (empty)';

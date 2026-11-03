@@ -46,5 +46,6 @@ export function buildFormulaProgram(terms, base = 'hex') {
 
     const data = values.map((v, i) => `${toHex1(DATA_START + i)}=${toHex2(v)}`).join(', ');
     const listing = `${code.map(disassemble).join(', ')} | data ${data}`;
-    return { memory, expected, listing };
+    const dataAddresses = values.map((_, i) => DATA_START + i);
+    return { memory, expected, listing, dataAddresses };
 }
