@@ -2,7 +2,7 @@
 
 A browser-based simulator of the **SAP-1 (Simple-As-Possible 1)** computer. Enter your own values, load them into RAM, and watch the fetch-decode-execute cycle move data across the W-Bus, through the registers, and onto the output LEDs.
 
-**Live demo:** _add your Vercel link here_
+**Live demo:** https://sap1-simulator.vercel.app/
 
 ---
 
@@ -20,8 +20,8 @@ A browser-based simulator of the **SAP-1 (Simple-As-Possible 1)** computer. Ente
 **Dependencies to install: none.** The only external resources are the Tailwind CSS and Google Fonts CDNs (internet needed on first load).
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-folder>
+git clone https://github.com/jeromelagardeparaintl-cyber/Sap_1-Simulator
+cd Sap_1-Simulator
 python -m http.server 8000      # or: npx serve   |   VS Code "Live Server"
 ```
 
@@ -144,4 +144,10 @@ Import the GitHub repo in Vercel with Framework Preset **Other**, Root Directory
 
 ## Team
 
-Add your 5 members' names here.
+ARCILLA, Josh Nathaniel R.		
+BELMONTE, Cloiez Veniz L.		
+CAMPOS, Vera Coleen S.		
+DE GUZMAN, Hazel Rose V.		
+LAGARDE, Jerome S.		
+MOLINA, Andrei Marshall DC.		
+
